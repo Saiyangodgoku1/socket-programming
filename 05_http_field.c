@@ -3,78 +3,49 @@ Write a client program that manually crafts an HTTP request packet,
 sends it to a web server, and displays all fields received in the HTTP response.
 This should be implemented for Linux systems using sockets.*/
 Client Code
-#include<stdio.h>          // Standard I/O functions
-#include<stdlib.h>         // Standard library functions
-#include<string.h>         // String handling functions
-#include<sys/socket.h>     // Socket functions
-#include<arpa/inet.h>      // Contains structures for internet addresses
-#include<netdb.h>          // For gethostbyname() to resolve domain names
-#include<unistd.h>         // For POSIX API like close
+#include<stdio.h>
+#include<string.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<unistd.h>
+#include<netdb.h>
 
-#define PORTNO 80          // HTTP operates on port 80
+#define PORT 80
 
 int main() {
     int sockfd;
     struct sockaddr_in servaddr;
     struct hostent *server;
-    char request[1024], response[4096];   // Buffers for HTTP request and response
-    int n;
+    char request[1024], response[4096];
 
-    // Step 1: Resolve the hostname to an IP address (e.g., google.com)
-    char hostname[] = "www.example.com";  // Replace with the website you want to send the request to
-    server = gethostbyname(hostname);
-    if (server == NULL) {
-        fprintf(stderr, "Error: No such host\n");
-        exit(1);
-    }
+    // Step 1: Resolve the hostname to IP address (www.example.com)
+    server = gethostbyname("www.example.com");
 
-    // Step 2: Create a socket using TCP
+    // Step 2: Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Error opening socket");
-        exit(1);
-    }
 
-    // Step 3: Initialize the server address structure
-    servaddr.sin_family = AF_INET;  // Use IPv4
-    servaddr.sin_port = htons(PORTNO);  // Convert port number to network byte order
-    memcpy(&servaddr.sin_addr.s_addr, server->h_addr, server->h_length);  // Copy server IP address
+    // Step 3: Setup server address
+    servaddr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&servaddr.sin_addr.s_addr, server->h_length);
+    servaddr.sin_port = htons(PORT);
 
-    // Step 4: Connect to the web server
-    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-        perror("Error connecting to server");
-        exit(1);
-    }
+    // Step 4: Connect to web server
+    connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 
-    // Step 5: Craft a manual HTTP GET request
-    snprintf(request, sizeof(request),
-        "GET / HTTP/1.1\r\n"        // HTTP GET request for the root page
-        "Host: %s\r\n"              // Host header with the server hostname
-        "Connection: close\r\n\r\n",// Close the connection after the request
-        hostname);                  // Inject the hostname into the request
-    printf("HTTP request:\n%s\n", request);  // Print the HTTP request
+    // Step 5: Craft and send HTTP GET request
+    snprintf(request, sizeof(request), "GET / HTTP/1.1\r\nHost: www.example.com\r\nConnection: close\r\n\r\n");
+    write(sockfd, request, strlen(request));
 
-    // Step 6: Send the crafted HTTP request to the server
-    n = write(sockfd, request, strlen(request));
-    if (n < 0) {
-        perror("Error writing to socket");
-        exit(1);
-    }
+    // Step 6: Read and display HTTP response
+    read(sockfd, response, sizeof(response));
+    printf("%s", response);
 
-    // Step 7: Read and display the HTTP response
-    printf("HTTP response:\n");
-    while ((n = read(sockfd, response, sizeof(response) - 1)) > 0) {
-        response[n] = '\0';  // Null-terminate the response string
-        printf("%s", response);  // Print the response
-    }
-    if (n < 0) {
-        perror("Error reading from socket");
-    }
-
-    // Step 8: Close the socket
+    // Step 7: Close socket
     close(sockfd);
+
     return 0;
 }
+
 /*Explanation of the Code
 Step 1: The program first resolves the domain name (e.g., www.example.com) to an IP address using gethostbyname().
 Step 2: A TCP socket is created using socket().
