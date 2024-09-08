@@ -9,7 +9,7 @@ Accepts a connection from a client using accept().
 Reads data from the client, processes it, and sends a response.
 Client:
 Creates a TCP socket.
-Connects to the server using connect().
+Connects to the server using connect().*/
 TCP Server (General Syntax)
 #include<stdio.h>          // Standard input/output functions
 #include<string.h>         // String handling functions
