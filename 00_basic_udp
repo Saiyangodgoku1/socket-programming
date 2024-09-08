@@ -1,0 +1,112 @@
+ UDP Server (General Syntax)
+#include<stdio.h>          // Standard input/output functions
+#include<string.h>         // String handling functions
+#include<stdlib.h>         // Standard library functions
+#include<sys/socket.h>     // Socket functions
+#include<netinet/in.h>     // Contains structures for internet addresses
+#include<arpa/inet.h>      // For handling internet operations
+#include<unistd.h>         // POSIX API for close
+
+#define PORTNO 8080        // Port number the server listens on
+
+int main() {
+    int sockfd;
+    struct sockaddr_in seraddr, cliaddr;
+    char buffer[1024];     // Buffer for sending/receiving data
+    socklen_t len;
+    int n;
+
+    // Step 1: Create a UDP socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);  // SOCK_DGRAM denotes UDP
+    if (sockfd < 0) {
+        perror("Error opening socket");
+        exit(1);
+    }
+
+    // Step 2: Initialize the server address structure
+    seraddr.sin_family = AF_INET;              // IPv4 protocol
+    seraddr.sin_addr.s_addr = INADDR_ANY;      // Bind to any IP address
+    seraddr.sin_port = htons(PORTNO);          // Convert port number to network byte order
+
+    // Step 3: Bind the socket to the server's address and port
+    if (bind(sockfd, (struct sockaddr *)&seraddr, sizeof(seraddr)) < 0) {
+        perror("Error binding socket");
+        exit(1);
+    }
+
+    printf("Server waiting for client...\n");
+
+    // Step 4: Receive data from the client
+    len = sizeof(cliaddr);
+    n = recvfrom(sockfd, buffer, 1024, 0, (struct sockaddr *)&cliaddr, &len);  // Receive data from client
+    if (n < 0) {
+        perror("Error receiving data");
+        exit(1);
+    }
+    buffer[n] = '\0';  // Null-terminate the string
+    printf("Client: %s\n", buffer);
+
+    // Step 5: Send response to the client
+    n = sendto(sockfd, "Message received", 16, 0, (struct sockaddr *)&cliaddr, len);  // Send response
+    if (n < 0) {
+        perror("Error sending data");
+        exit(1);
+    }
+
+    // Step 6: Close the socket
+    close(sockfd);  // Close the server socket
+    return 0;
+}
+UDP Client (General Syntax)
+#include<stdio.h>          // Standard input/output functions
+#include<string.h>         // String handling functions
+#include<stdlib.h>         // Standard library functions
+#include<sys/socket.h>     // Socket functions
+#include<netinet/in.h>     // Contains structures for internet addresses
+#include<arpa/inet.h>      // For handling internet operations
+#include<unistd.h>         // POSIX API for close
+
+#define PORTNO 8080        // Port number to connect to the server
+
+int main() {
+    int sockfd, n;
+    struct sockaddr_in servaddr;
+    char buffer[1024];     // Buffer for sending/receiving data
+    socklen_t len;
+
+    // Step 1: Create a UDP socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);  // SOCK_DGRAM denotes UDP
+    if (sockfd < 0) {
+        perror("Error opening socket");
+        exit(1);
+    }
+
+    // Step 2: Initialize the server address structure
+    servaddr.sin_family = AF_INET;             // IPv4 protocol
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  // Server address (localhost)
+    servaddr.sin_port = htons(PORTNO);         // Convert port number to network byte order
+
+    // Step 3: Send data to the server
+    printf("Enter message: ");
+    bzero(buffer, 1024);  // Clear the buffer
+    fgets(buffer, 1023, stdin);  // Get user input
+    len = sizeof(servaddr);
+    n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&servaddr, len);  // Send data to server
+    if (n < 0) {
+        perror("Error sending data");
+        exit(1);
+    }
+
+    // Step 4: Receive response from the server
+    bzero(buffer, 1024);  // Clear the buffer
+    n = recvfrom(sockfd, buffer, 1024, 0, (struct sockaddr *)&servaddr, &len);  // Receive response
+    if (n < 0) {
+        perror("Error receiving data");
+        exit(1);
+    }
+    printf("Server: %s\n", buffer);
+
+    // Step 5: Close the socket
+    close(sockfd);  // Close the connection
+    return 0;
+}
