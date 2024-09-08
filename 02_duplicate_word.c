@@ -7,187 +7,134 @@ The client displays the received data. The process repeats until
 the client enters the string "Stop," 
 at which point both processes terminate.*/
 Server Code
-#include<stdio.h>          // Standard I/O functions
-#include<string.h>         // String handling functions
-#include<sys/types.h>      // Definitions for data types like socket structures
-#include<sys/socket.h>     // Contains socket functions
-#include<netinet/in.h>     // Contains constants and structures for internet domain addresses
-#include<arpa/inet.h>      // Contains definitions for internet operations
-#include<unistd.h>         // POSIX API for sleep, close, etc.
-#include<stdlib.h>         // For general utilities like exit
-#define PORTNO 10200       // Server will listen on port 10200
+#include<stdio.h>
+#include<string.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<unistd.h>
+#include<stdlib.h>
 
-// Helper function to remove duplicate words
+#define PORT 8080
+
+// Function to remove duplicate words
 void remove_duplicates(char *input, char *output) {
-    char temp[256];
     char *word;
-    int found;
-    strcpy(temp, input);    // Copy input sentence into temporary buffer
-    char *token[50];        // Token array to store words
-    int count[50] = {0};    // Array to count occurrences of each word
-    int i = 0, j;
-
-    word = strtok(temp, " ");  // Tokenize the sentence by spaces
+    char *words[100];  // Array to store unique words
+    int count[100] = {0}, num_words = 0;
+    word = strtok(input, " ");
     while (word != NULL) {
-        found = 0;
-        // Check for duplicates
-        for (j = 0; j < i; j++) {
-            if (strcmp(token[j], word) == 0) {
-                count[j]++;   // Increment the count for duplicates
+        int found = 0;
+        for (int i = 0; i < num_words; i++) {
+            if (strcmp(words[i], word) == 0) {
+                count[i]++;
                 found = 1;
                 break;
             }
         }
-        // If the word is not a duplicate, store it
         if (!found) {
-            token[i] = word;
-            count[i] = 1;
-            i++;
+            words[num_words] = word;
+            count[num_words] = 1;
+            num_words++;
         }
-        word = strtok(NULL, " "); // Get the next word
+        word = strtok(NULL, " ");
     }
 
-    // Construct the resultant sentence
-    output[0] = '\0';  // Clear output buffer
-    for (j = 0; j < i; j++) {
-        strcat(output, token[j]);
+    output[0] = '\0';  // Clear output
+    for (int i = 0; i < num_words; i++) {
+        strcat(output, words[i]);
         strcat(output, " ");
     }
-    output[strlen(output) - 1] = '\0';  // Remove the trailing space
+    output[strlen(output) - 1] = '\0';  // Remove trailing space
 }
 
 int main() {
-    int sockfd, newsockfd, clilen, n = 1;
-    struct sockaddr_in seraddr, cliaddr;
-    char buf[256], result[256];
+    int sockfd, newsockfd;
+    struct sockaddr_in servaddr, cliaddr;
+    socklen_t clilen;
+    char buffer[1024], result[1024];
 
-    // Step 1: Create socket using TCP
+    // Step 1: Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Error opening socket");
-        return 1;
-    }
-
-    // Step 2: Initialize server address structure
-    seraddr.sin_family = AF_INET;
-    seraddr.sin_addr.s_addr = inet_addr("172.16.48.92");
-    seraddr.sin_port = htons(PORTNO);
-
-    // Step 3: Bind the socket to the specified port
-    if (bind(sockfd, (struct sockaddr *)&seraddr, sizeof(seraddr)) < 0) {
-        perror("Error binding socket");
-        return 1;
-    }
-
-    // Step 4: Listen for incoming client connections
+    
+    // Step 2: Setup server address
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+    bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+    
+    // Step 3: Listen for client connections
     listen(sockfd, 5);
-    printf("Server waiting for client...\n");
 
     while (1) {
-        // Step 5: Accept client connection
         clilen = sizeof(cliaddr);
         newsockfd = accept(sockfd, (struct sockaddr *)&cliaddr, &clilen);
-        if (newsockfd < 0) {
-            perror("Error on accept");
-            return 1;
+        
+        while (1) {
+            // Step 4: Receive message from client
+            read(newsockfd, buffer, sizeof(buffer));
+            
+            if (strcmp(buffer, "Stop") == 0) break;  // Exit condition
+            
+            // Step 5: Remove duplicates
+            remove_duplicates(buffer, result);
+            
+            // Step 6: Send processed result back to client
+            write(newsockfd, result, strlen(result) + 1);
         }
-
-        // Step 6: Read message from client
-        n = read(newsockfd, buf, sizeof(buf));
-        if (n < 0) {
-            perror("Error reading from socket");
-            return 1;
-        }
-        buf[n] = '\0'; // Null-terminate the string
-        printf("Message from Client: %s\n", buf);
-
-        // If the client sends "Stop", terminate the server
-        if (strcmp(buf, "Stop") == 0) {
-            printf("Termination requested by client. Stopping server...\n");
-            break;
-        }
-
-        // Step 7: Remove duplicates and prepare result
-        remove_duplicates(buf, result);
-        printf("Processed sentence: %s\n", result);
-
-        // Step 8: Send the processed result back to the client
-        n = write(newsockfd, result, strlen(result) + 1);
-        if (n < 0) {
-            perror("Error writing to socket");
-            return 1;
-        }
+        
+        // Step 7: Close client socket
+        close(newsockfd);
     }
 
-    // Step 9: Close server socket
-    close(newsockfd);
+    // Step 8: Close server socket
     close(sockfd);
     return 0;
 }
+
 Client Code 
-#include<sys/types.h>      // Definitions for data types like socket structures
-#include<sys/socket.h>     // Contains socket functions
-#include<stdio.h>          // Standard I/O functions
-#include<netinet/in.h>     // Contains constants and structures for internet domain addresses
-#include<arpa/inet.h>      // Contains definitions for internet operations
-#include<string.h>         // String handling functions
-#include<unistd.h>         // POSIX API for sleep, close, etc.
-#include<stdlib.h>         // For general utilities like exit
+#include<stdio.h>
+#include<string.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<unistd.h>
+
+#define PORT 8080
 
 int main() {
-    int len, result, sockfd, n = 1;
-    struct sockaddr_in address;
-    char ch[256], buf[256];
+    int sockfd;
+    struct sockaddr_in servaddr;
+    char buffer[1024];
 
-    // Step 1: Create a socket using TCP
+    // Step 1: Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Error opening socket");
-        return 1;
-    }
+    
+    // Step 2: Setup server address
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_port = htons(PORT);
 
-    // Step 2: Initialize server address structure
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("172.16.48.92");
-    address.sin_port = htons(10200);
-    len = sizeof(address);
+    // Step 3: Connect to server
+    connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 
-    // Step 3: Connect to the server
-    result = connect(sockfd, (struct sockaddr *)&address, len);
-    if (result == -1) {
-        perror("Error connecting to server");
-        exit(1);
-    }
-
-    // Step 4: Keep interacting with the server until "Stop" is entered
     while (1) {
-        // Get the sentence from the user
-        printf("Enter a string (or 'Stop' to exit): ");
-        fgets(ch, sizeof(ch), stdin);
-        ch[strlen(ch) - 1] = '\0';  // Remove trailing newline
+        // Step 4: Accept input from user
+        printf("Enter a sentence (or 'Stop' to exit): ");
+        fgets(buffer, sizeof(buffer), stdin);
+        buffer[strlen(buffer) - 1] = '\0';  // Remove newline
 
-        // Step 5: Send the message to the server
-        write(sockfd, ch, strlen(ch) + 1);
+        // Step 5: Send message to server
+        write(sockfd, buffer, strlen(buffer) + 1);
 
-        // Step 6: If the user enters "Stop", terminate the client
-        if (strcmp(ch, "Stop") == 0) {
-            printf("Terminating client...\n");
-            break;
-        }
-
-        // Step 7: Read the processed message from the server
-        n = read(sockfd, buf, sizeof(buf));
-        if (n < 0) {
-            perror("Error reading from socket");
-            return 1;
-        }
-        buf[n] = '\0';  // Null-terminate the received string
-
-        // Step 8: Display the result sent by the server
-        printf("Processed sentence from server: %s\n", buf);
+        if (strcmp(buffer, "Stop") == 0) break;  // Exit condition
+        
+        // Step 6: Receive processed message from server
+        read(sockfd, buffer, sizeof(buffer));
+        printf("Processed Sentence: %s\n", buffer);
     }
 
-    // Step 9: Close the socket
+    // Step 7: Close socket
     close(sockfd);
     return 0;
 }
+
