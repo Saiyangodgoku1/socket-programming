@@ -86,3 +86,22 @@ Step 7: The HTTP response is read in chunks and displayed on the client side usi
 Step 8: The socket is closed using close().*/
 gcc -o http_client http_client.c
 ./http_client
+
+Example Output:
+
+HTTP request:
+GET / HTTP/1.1
+Host: www.example.com
+Connection: close
+
+HTTP response:
+HTTP/1.1 200 OK
+Date: Mon, 07 Sep 2024 12:00:00 GMT
+Content-Type: text/html; charset=UTF-8
+Connection: close
+...
+<!doctype html>
+<html>
+<head>...</head>
+<body>...</body>
+</html>
