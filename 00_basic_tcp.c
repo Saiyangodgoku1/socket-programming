@@ -1,4 +1,16 @@
-. TCP Server (General Syntax)
+/*Explanation of the Code Structure
+TCP:
+
+Server:
+Creates a TCP socket using socket().
+Binds the socket to a specific port using bind().
+Listens for incoming connections using listen().
+Accepts a connection from a client using accept().
+Reads data from the client, processes it, and sends a response.
+Client:
+Creates a TCP socket.
+Connects to the server using connect().
+TCP Server (General Syntax)
 #include<stdio.h>          // Standard input/output functions
 #include<string.h>         // String handling functions
 #include<stdlib.h>         // Standard library functions
@@ -123,16 +135,5 @@ int main() {
     close(sockfd);  // Close the connection
     return 0;
 }
-/*Explanation of the Code Structure
-TCP:
 
-Server:
-Creates a TCP socket using socket().
-Binds the socket to a specific port using bind().
-Listens for incoming connections using listen().
-Accepts a connection from a client using accept().
-Reads data from the client, processes it, and sends a response.
-Client:
-Creates a TCP socket.
-Connects to the server using connect().
 Sends data to the server, receives a response, and closes the connection.*/
