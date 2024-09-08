@@ -1,4 +1,19 @@
- UDP Server (General Syntax)
+/*
+Explanation of the Code Structure
+UDP:
+
+Server:
+Creates a UDP socket using socket().
+Binds the socket to a specific port.
+Waits to receive data from the client using recvfrom().
+Processes the data and sends a response using sendto().
+Client:
+Creates a UDP socket.
+Sends data to the server using sendto().
+Receives the server's response using recvfrom().
+Closes the socket.
+*/
+UDP Server (General Syntax)
 #include<stdio.h>          // Standard input/output functions
 #include<string.h>         // String handling functions
 #include<stdlib.h>         // Standard library functions
